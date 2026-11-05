@@ -1,0 +1,17 @@
+# Build outputs
+*.o
+tatkal-core
+tatkal-client
+tatkal-net-client
+tatkal-tests
+tatkal-recovery-tests
+tatkal-algorithm-tests
+tatkal-concurrency-tests
+
+# Runtime reservation history and generated metrics
+*.wal
+metrics.csv
+
+# Local document QA renderings
+qa_final/
+qa_original/

@@ -9,6 +9,9 @@ all: tatkal-core tatkal-client tatkal-net-client
 portal:
 	python3 -m py_compile tatkal_portal.py
 
+refresh-timetable:
+	python3 refresh_timetable.py
+
 $(OBJ) client.o: tatkal.h
 ipc.o client.o main.o supervisor.o: ipc.h
 
@@ -44,4 +47,4 @@ smoke: tatkal-core
 clean:
 	rm -f $(OBJ) *.o tatkal-core tatkal-client tatkal-net-client tatkal-tests tatkal-recovery-tests tatkal-algorithm-tests tatkal-concurrency-tests
 
-.PHONY: all clean test smoke portal
+.PHONY: all clean test smoke portal refresh-timetable

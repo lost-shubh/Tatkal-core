@@ -209,3 +209,12 @@ returns the assigned berths and a local PNR record in `passengers.csv`.
 Selecting a train also displays every intermediate station with sequence,
 station code, arrival/departure, halt minutes, running day, and distance from
 the cleaned `train_stops` table.
+
+When the railpull crawl is complete, refresh the complete database atomically:
+
+```sh
+python3 refresh_timetable.py --railpull ../railpull --db railway.db
+```
+
+The command refuses to replace a good database with a partial crawl. Use
+`--allow-partial` only for deliberate development testing.

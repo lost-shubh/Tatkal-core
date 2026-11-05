@@ -30,6 +30,7 @@ test: all
 	python3 network_test.py
 	python3 dashboard_test.py
 	python3 train_database_test.py
+	python3 railway_dataset_test.py
 
 smoke: tatkal-core
 	./tatkal-core demo

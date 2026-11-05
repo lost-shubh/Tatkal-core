@@ -130,6 +130,16 @@ the project does not silently download or redistribute a third-party bulk
 snapshot. The official Railway Board timetable is the authoritative reference
 for the applicable timetable period.
 
+Clean and normalize the full crawler output into the project database:
+
+```sh
+python3 railway_dataset.py ../railpull/data/out railway.db
+```
+
+This creates normalized `trains`, `stations`, and `train_stops` tables,
+rejects invalid rows, trims names, normalizes station codes and times, removes
+duplicate train/stop keys, and prints cleaning counters.
+
 Use `ingress FILE` in the server terminal to load local CSV requests. Each
 non-comment line is `request_id,train_number,berth_count,priority,preferred_berth`.
 Malformed lines are rejected. The system supports up to 16 distinct trains per

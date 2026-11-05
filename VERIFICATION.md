@@ -24,6 +24,8 @@ Executed in WSL2 on 2026-10-27, Linux 6.6.114.1, 8 reported CPUs.
   exclusive booking updates.
 - `python3 train_database_test.py`: SQLite schema, CSV import, name search, and
   route lookup pass using the project seed catalog.
+- `python3 railway_dataset_test.py`: full-catalog normalization, validation,
+  deduplication, station-code cleanup, and stop-time cleanup pass.
 - `python3 benchmark.py`: three runs each of 100, 1000, and 10000 requests,
   four workers, burst producer with bounded queue backpressure. Temporary
   directories isolate all benchmark logs from customer reservations.

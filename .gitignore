@@ -10,6 +10,7 @@ tatkal-concurrency-tests
 
 # Runtime reservation history and generated metrics
 *.wal
+*.wal.migrated
 metrics.csv
 trains.db
 __pycache__/

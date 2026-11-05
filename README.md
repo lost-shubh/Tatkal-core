@@ -218,3 +218,9 @@ python3 refresh_timetable.py --railpull ../railpull --db railway.db
 
 The command refuses to replace a good database with a partial crawl. Use
 `--allow-partial` only for deliberate development testing.
+
+Audit source and installed counts with:
+
+```sh
+make db-info
+```

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """IRCTC-style terminal portal backed by railway.db and the Tatkal TCP server."""
-import argparse, csv, os, random, socket, sqlite3, time
+import argparse, csv, os, random, socket, sqlite3, time, re
 
 def ask(prompt, validator=lambda x: bool(x)):
     while True:
@@ -32,11 +32,12 @@ def show_stops(db, train_number):
     if not rows:
         print("No intermediate-station timetable is loaded for this train yet.")
         print("Re-import the completed railpull export to populate train_stops.")
-        return
+        return []
     print("\nIntermediate stations")
     print("Seq  Code      Station                         Day  Arrival  Departure  Halt  Distance")
     for seq, code, name, day, arrival, departure, halt, distance in rows:
         print(f"{seq:3}  {(code or '-'):8}  {name[:32]:32} {day or '-':>3}  {(arrival or '-'):>7}  {(departure or '-'):>9}  {(halt if halt is not None else '-'):>4}  {(distance if distance is not None else '-'):>8}")
+    return rows
 
 def main():
     ap = argparse.ArgumentParser()
@@ -68,7 +69,14 @@ def main():
             else: print("That train is not in the displayed results.")
         if choice == "1": continue
         selected = ask("Train number to book: ", lambda x: any(str(r[0]) == x for r in rows))
-        show_stops(db, selected)
+        stop_rows = show_stops(db, selected)
+        journey_date = ask("Journey date (YYYY-MM-DD): ", lambda x: bool(re.fullmatch(r"\d{4}-\d{2}-\d{2}", x)))
+        boarding = input("Boarding station code/name (blank for train origin): ").strip()
+        destination_stop = input("Destination station code/name (blank for train destination): ").strip()
+        if stop_rows:
+            names = [(str(r[1] or "").upper(), str(r[2]).upper()) for r in stop_rows]
+            if boarding and not any(boarding.upper() in pair for pair in names): print("Boarding station is not on this train route."); continue
+            if destination_stop and not any(destination_stop.upper() in pair for pair in names): print("Destination station is not on this train route."); continue
         count = int(ask("Number of seats (1-4): ", lambda x: x.isdigit() and 1 <= int(x) <= 4))
         print("Checking live availability...")
         try:
@@ -91,7 +99,7 @@ def main():
         print("\n" + result)
         if result.startswith("CONFIRMED"):
             with open("passengers.csv", "a", newline="", encoding="utf-8") as f:
-                csv.writer(f).writerow([pnr, request_id, selected, name, age, gender, quota, count, result])
+                csv.writer(f).writerow([pnr, request_id, selected, journey_date, boarding, destination_stop, name, age, gender, quota, count, result])
             print(f"PNR: {pnr}")
             print(f"Passenger: {name}, age {age}, {gender}; quota={quota}; berths assigned by system.")
     db.close()

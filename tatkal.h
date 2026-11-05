@@ -113,6 +113,7 @@ void algo_look_demo(FILE *o, int r[], int r_count, int head);
 void algo_disk_compare(FILE *o, int r[], int r_count, int head);
 
 void run_algorithm_demos(FILE *out);
+int run_fault_injection_demo(FILE *out);
 int run_ipc_demo(FILE *out);
 int run_ipc_queue_demo(FILE *out);
 

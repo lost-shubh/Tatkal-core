@@ -90,6 +90,9 @@ idempotent after cancellation and cannot be reused after restart.
 Use `availability TRAIN` in the server terminal to view free/occupied berths
 by coach. The model maps 120 berths into three coaches of 40 berths each.
 
+Run `fault-test` to exercise bounded-queue saturation and partial-WAL recovery
+without modifying customer data.
+
 Use `ingress FILE` in the server terminal to load local CSV requests. Each
 non-comment line is `request_id,train_number,berth_count,priority,preferred_berth`.
 Malformed lines are rejected. The system supports up to 16 distinct trains per

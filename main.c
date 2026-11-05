@@ -30,8 +30,9 @@ static void monitor_command(char *line, BookingSystem *b, TaskQueue *q, Metrics 
         puts("Simulation: virtual cylinders 0-199; FCFS, SCAN, LOOK, C-SCAN");
         algo_disk_compare(stdout,cylinders,8,53);
     } else if (!strcmp(line,"deadlock-test")) run_algorithm_demos(stdout);
+    else if (!strcmp(line,"fault-test")) run_fault_injection_demo(stdout);
     else if (!strncmp(line,"ingress ",8) && line[8]) ingress_load_file(line+8,q,m);
-    else if (*line) puts("Commands: dashboard | availability TRAIN | status REQUEST_ID | export-csv FILE | cancel REQUEST_ID | queue-stats | metrics | show-bookings | memory-stats | arm-trace | deadlock-test | ingress FILE | shutdown");
+    else if (*line) puts("Commands: dashboard | availability TRAIN | status REQUEST_ID | export-csv FILE | cancel REQUEST_ID | queue-stats | metrics | memory-stats | arm-trace | deadlock-test | fault-test | ingress FILE | shutdown");
     fflush(stdout);
 }
 
@@ -74,7 +75,7 @@ static int server_mode(int workers,int tcp_port) {
 
     printf("Tatkal-Core Server started. IPC ring=%s; TCP/epoll=0.0.0.0:%d. Press Ctrl+C to stop.\n", ring_name,tcp_port);
     puts("TCP protocol: one newline-terminated CSV request: request_id,train,berths,priority,preferred_berth");
-    puts("Commands: dashboard | availability TRAIN | status REQUEST_ID | export-csv FILE | cancel REQUEST_ID | queue-stats | metrics | show-bookings | memory-stats | arm-trace | deadlock-test | ingress FILE | shutdown");
+    puts("Commands: dashboard | availability TRAIN | status REQUEST_ID | export-csv FILE | cancel REQUEST_ID | queue-stats | metrics | memory-stats | arm-trace | deadlock-test | fault-test | ingress FILE | shutdown");
     fflush(stdout);
     char command[256]; size_t command_len=0; int input_open=1, overflow=0;
 
@@ -128,6 +129,7 @@ int main(int argc,char **argv){
     if(!strcmp(argv[1],"wal-inspect")&&argc==3)return wal_inspect(argv[2],stdout)<0;
     if(!strcmp(argv[1],"migrate-legacy")&&argc==4)return wal_migrate_legacy(argv[2],argv[3],stdout)!=0;
     if(!strcmp(argv[1],"wal-fault-demo"))return wal_fault_demo(stdout)!=0;
+    if(!strcmp(argv[1],"fault-test"))return run_fault_injection_demo(stdout)!=0;
     if(!strcmp(argv[1],"workload")&&argc==4)return workload(atoi(argv[2]),atoi(argv[3]));
     if(!strcmp(argv[1],"server")&&(argc==3||argc==4))return server_mode(atoi(argv[2]),argc==4?atoi(argv[3]):5050);
     usage(argv[0]);return 1;

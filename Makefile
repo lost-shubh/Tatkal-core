@@ -1,7 +1,7 @@
 CC ?= gcc
 CFLAGS ?= -D_XOPEN_SOURCE=700 -std=c11 -Wall -Wextra -Wpedantic -O2 -pthread
 LDFLAGS ?= -pthread -lrt
-SRC = main.c booking.c queue.c worker_pool.c wal.c recovery.c migrate.c algorithms.c supervisor.c ipc.c metrics.c ingress.c
+SRC = main.c booking.c queue.c worker_pool.c wal.c recovery.c migrate.c algorithms.c fault_injection.c supervisor.c ipc.c metrics.c ingress.c
 OBJ = $(SRC:.c=.o)
 
 all: tatkal-core tatkal-client tatkal-net-client

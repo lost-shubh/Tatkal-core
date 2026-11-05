@@ -15,6 +15,8 @@ Executed in WSL2 on 2026-10-27, Linux 6.6.114.1, 8 reported CPUs.
   restart replay leaves its berths available while preserving request-ID
   idempotency.
 - Availability test coverage reports free/occupied capacity per train coach.
+- Fault-injection test confirms queue overflow rejection and partial-WAL
+  recovery behavior without modifying customer data.
 - `python3 benchmark.py`: three runs each of 100, 1000, and 10000 requests,
   four workers, burst producer with bounded queue backpressure. Temporary
   directories isolate all benchmark logs from customer reservations.

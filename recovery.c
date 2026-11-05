@@ -29,11 +29,11 @@ int wal_restore(const char *path, BookingSystem *s) {
         uint64_t request_id; int train_id,status,berth_count,berths[MAX_REQUEST_BERTHS];
         if(prefix[1]==WAL_VERSION){Record r;n=fread(&r,1,sizeof r,f);if(n!=sizeof r){if(ftruncate(fileno(f),end)||fsync(fileno(f)))goto bad;break;}if(r.magic!=WAL_MAGIC||r.version!=WAL_VERSION||r.length!=sizeof r||r.checksum!=record_sum(&r,offsetof(Record,checksum))){goto bad;}request_id=r.request_id;train_id=r.train_id;status=r.status;berth_count=r.berth_count;memcpy(berths,r.berths,sizeof berths);}
         else {LegacyRecord r;n=fread(&r,1,sizeof r,f);if(n!=sizeof r){if(ftruncate(fileno(f),end)||fsync(fileno(f)))goto bad;break;}if(r.magic!=WAL_MAGIC||r.length!=sizeof r||r.checksum!=record_sum(&r,offsetof(LegacyRecord,checksum))){goto bad;}request_id=r.request_id;train_id=12001;status=r.status;berth_count=r.berth_count;memcpy(berths,r.berths,sizeof berths);}
-        if(!request_id || train_id<1 || train_id>99999 || status!=REQUEST_CONFIRMED || berth_count<1 || berth_count>MAX_REQUEST_BERTHS || count==MAX_TRAINS*MAX_BERTHS)goto bad;
+        if(!request_id || train_id<1 || train_id>99999 || (status!=REQUEST_CONFIRMED&&status!=REQUEST_CANCELLED) || berth_count<1 || berth_count>MAX_REQUEST_BERTHS || count==MAX_TRAINS*MAX_BERTHS)goto bad;
         int t=-1;for(int i=0;i<MAX_TRAINS;i++)if(train_ids[i]==train_id){t=i;break;}if(t<0)for(int i=0;i<MAX_TRAINS;i++)if(!train_ids[i]){train_ids[i]=train_id;t=i;break;}if(t<0)goto bad;
-        for(int i=0;i<count;i++)if(ids[i]==request_id)goto bad;
-        for(int i=0;i<berth_count;i++){int b=berths[i];if(b<0||b>=MAX_BERTHS||owners[t][b])goto bad;owners[t][b]=request_id;}
-        ids[count++]=request_id;
+        if(status==REQUEST_CONFIRMED)for(int i=0;i<count;i++)if(ids[i]==request_id)goto bad;
+        if(status==REQUEST_CONFIRMED){for(int i=0;i<berth_count;i++){int b=berths[i];if(b<0||b>=MAX_BERTHS||owners[t][b])goto bad;owners[t][b]=request_id;}ids[count++]=request_id;}
+        else {int found_id=-1;for(int i=0;i<count;i++)if(ids[i]==request_id){found_id=i;break;}if(found_id<0)goto bad;for(int i=0;i<berth_count;i++){int b=berths[i];if(b<0||b>=MAX_BERTHS||owners[t][b]!=request_id)goto bad;owners[t][b]=0;}ids[found_id]=ids[count-1];count--;}
         end=ftell(f);
         if(end<0) goto bad;
     }

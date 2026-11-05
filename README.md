@@ -80,6 +80,10 @@ LibreOffice charts. The CSV includes completion counts, confirmation/rejection
 counts, queue depth by priority, latency statistics, WAL failures, aging, and
 per-priority waiting times.
 
+To cancel an active reservation from the server terminal, type `cancel
+REQUEST_ID`. Cancellation is appended to the WAL before berths are released,
+and replay applies the cancellation after restart.
+
 Use `ingress FILE` in the server terminal to load local CSV requests. Each
 non-comment line is `request_id,train_number,berth_count,priority,preferred_berth`.
 Malformed lines are rejected. The system supports up to 16 distinct trains per

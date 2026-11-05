@@ -13,7 +13,7 @@
 #define WAL_VERSION 2u
 
 typedef enum { PRIORITY_GENERAL, PRIORITY_MEDIUM, PRIORITY_HIGH } Priority;
-typedef enum { REQUEST_PENDING, REQUEST_CONFIRMED, REQUEST_REJECTED } RequestStatus;
+typedef enum { REQUEST_PENDING, REQUEST_CONFIRMED, REQUEST_REJECTED, REQUEST_CANCELLED } RequestStatus;
 
 typedef struct {
     uint64_t id;
@@ -74,6 +74,7 @@ int booking_init(BookingSystem *s);
 void booking_destroy(BookingSystem *s);
 BookingResult booking_process(BookingSystem *s, BookingRequest r);
 BookingResult booking_commit(BookingSystem *s, Wal *w, BookingRequest r);
+BookingResult booking_cancel(BookingSystem *s, Wal *w, uint64_t request_id);
 void booking_rollback(BookingSystem *s, const BookingResult *r);
 
 /* New: Booking Queries */

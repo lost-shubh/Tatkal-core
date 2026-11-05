@@ -7,7 +7,7 @@
 #include <poll.h>
 #include <time.h>
 
-static void monitor_command(char *line, BookingSystem *b, TaskQueue *q, Metrics *m) {
+static void monitor_command(char *line, BookingSystem *b, TaskQueue *q, Metrics *m, Wal *w) {
     line[strcspn(line,"\r\n")]=0;
     if (!strcmp(line,"queue-stats")) {
         pthread_mutex_lock(&q->lock);
@@ -16,6 +16,7 @@ static void monitor_command(char *line, BookingSystem *b, TaskQueue *q, Metrics 
         pthread_mutex_unlock(&q->lock);
     } else if (!strcmp(line,"metrics")) print_metrics_summary(m,stdout);
     else if (!strcmp(line,"dashboard")) print_dashboard(m,q,stdout);
+    else if (!strncmp(line,"cancel ",7)) { unsigned long long id; if(sscanf(line+7,"%llu",&id)==1){BookingResult x=booking_cancel(b,w,(uint64_t)id);printf("Cancellation %s: request=%llu reason=%s\n",x.status==REQUEST_CANCELLED?"confirmed":"rejected",id,x.reason);}else puts("usage: cancel REQUEST_ID"); }
     else if (!strncmp(line,"export-csv ",11) && line[11]) metrics_export_csv(m,q,line+11,stdout);
     else if (!strcmp(line,"show-bookings")) booking_list_confirmed(b,stdout);
     else if (!strcmp(line,"memory-stats")) {
@@ -28,7 +29,7 @@ static void monitor_command(char *line, BookingSystem *b, TaskQueue *q, Metrics 
         algo_disk_compare(stdout,cylinders,8,53);
     } else if (!strcmp(line,"deadlock-test")) run_algorithm_demos(stdout);
     else if (!strncmp(line,"ingress ",8) && line[8]) ingress_load_file(line+8,q,m);
-    else if (*line) puts("Commands: dashboard | export-csv FILE | queue-stats | metrics | show-bookings | memory-stats | arm-trace | deadlock-test | ingress FILE | shutdown");
+    else if (*line) puts("Commands: dashboard | export-csv FILE | cancel REQUEST_ID | queue-stats | metrics | show-bookings | memory-stats | arm-trace | deadlock-test | ingress FILE | shutdown");
     fflush(stdout);
 }
 
@@ -71,7 +72,7 @@ static int server_mode(int workers,int tcp_port) {
 
     printf("Tatkal-Core Server started. IPC ring=%s; TCP/epoll=0.0.0.0:%d. Press Ctrl+C to stop.\n", ring_name,tcp_port);
     puts("TCP protocol: one newline-terminated CSV request: request_id,train,berths,priority,preferred_berth");
-    puts("Commands: dashboard | export-csv FILE | queue-stats | metrics | show-bookings | memory-stats | arm-trace | deadlock-test | ingress FILE | shutdown");
+    puts("Commands: dashboard | export-csv FILE | cancel REQUEST_ID | queue-stats | metrics | show-bookings | memory-stats | arm-trace | deadlock-test | ingress FILE | shutdown");
     fflush(stdout);
     char command[256]; size_t command_len=0; int input_open=1, overflow=0;
 
@@ -85,7 +86,7 @@ static int server_mode(int workers,int tcp_port) {
                 command[command_len]=0;
                 if(overflow) puts("Command too long");
                 else if(!strcmp(command,"shutdown")) keep_running=0;
-                else monitor_command(command,&b,&q,&m);
+                else monitor_command(command,&b,&q,&m,&w);
                 command_len=0; overflow=0;
             } else if(command_len<sizeof command-1) command[command_len++]=c;
             else overflow=1;

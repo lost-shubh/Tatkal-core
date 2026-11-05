@@ -19,6 +19,16 @@ int main(void) {
     assert(wal_restore(path,&b)==-1); /* duplicate/conflicting committed event */
     assert(!booking_query_status(&b,123,&out)); /* failed replay publishes nothing */
     booking_destroy(&b); unlink(path);
-    puts("recovery tests: passed (restart, partial-tail repair, duplicate rejection)");
+
+    char cancel_path[]="/tmp/tatkal-cancel-XXXXXX";
+    fd=mkstemp(cancel_path); assert(fd>=0); close(fd);
+    assert(!booking_init(&b)); assert(!wal_open(&w,cancel_path));
+    BookingRequest request={.id=777,.train_id=12002,.berth_count=1,.preferred_berth=8};
+    BookingResult confirmed=booking_commit(&b,&w,request); assert(confirmed.status==REQUEST_CONFIRMED);
+    BookingResult cancelled=booking_cancel(&b,&w,777); assert(cancelled.status==REQUEST_CANCELLED);
+    wal_close(&w); booking_destroy(&b);
+    assert(!booking_init(&b)); assert(wal_restore(cancel_path,&b)==0);
+    assert(booking_query_status(&b,777,&out)==-1); booking_destroy(&b); unlink(cancel_path);
+    puts("recovery tests: passed (restart, partial-tail repair, duplicate rejection, cancellation replay)");
     return 0;
 }

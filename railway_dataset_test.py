@@ -9,4 +9,5 @@ with tempfile.TemporaryDirectory() as d:
     assert stats['trains_loaded']==2 and stats['stops_loaded']==2 and stats['rejected']==1
     assert db.execute('select name from trains where train_number=12001').fetchone()[0]=='Demo'
     assert db.execute('select station_code from stations').fetchone()[0]=='AA'
+    db.close()
 print('railway dataset cleaning test: passed')

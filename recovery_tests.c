@@ -28,7 +28,9 @@ int main(void) {
     BookingResult cancelled=booking_cancel(&b,&w,777); assert(cancelled.status==REQUEST_CANCELLED);
     wal_close(&w); booking_destroy(&b);
     assert(!booking_init(&b)); assert(wal_restore(cancel_path,&b)==0);
-    assert(booking_query_status(&b,777,&out)==-1); booking_destroy(&b); unlink(cancel_path);
+    assert(booking_query_status(&b,777,&out)==-1);
+    request.preferred_berth=8; BookingResult reused=booking_process(&b,request); assert(reused.status==REQUEST_REJECTED);
+    booking_destroy(&b); unlink(cancel_path);
     puts("recovery tests: passed (restart, partial-tail repair, duplicate rejection, cancellation replay)");
     return 0;
 }

@@ -12,9 +12,9 @@ static uint32_t record_sum(const void *v,size_t n){const unsigned char *p=v;uint
 int wal_restore(const char *path, BookingSystem *s) {
     FILE *f = fopen(path, "rb+");
     if (!f) return errno == ENOENT ? 0 : -1;
-    uint64_t owners[MAX_TRAINS][MAX_BERTHS] = {{0}}, ids[MAX_TRAINS*MAX_BERTHS];
+    uint64_t owners[MAX_TRAINS][MAX_BERTHS] = {{0}}, ids[MAX_TRAINS*MAX_BERTHS], all_ids[MAX_TRAINS*MAX_BERTHS*2];
     int train_ids[MAX_TRAINS]={0};
-    int count = 0;
+    int count = 0, all_count = 0;
     long end = 0;
     for (;;) {
         uint32_t prefix[2];
@@ -31,17 +31,20 @@ int wal_restore(const char *path, BookingSystem *s) {
         else {LegacyRecord r;n=fread(&r,1,sizeof r,f);if(n!=sizeof r){if(ftruncate(fileno(f),end)||fsync(fileno(f)))goto bad;break;}if(r.magic!=WAL_MAGIC||r.length!=sizeof r||r.checksum!=record_sum(&r,offsetof(LegacyRecord,checksum))){goto bad;}request_id=r.request_id;train_id=12001;status=r.status;berth_count=r.berth_count;memcpy(berths,r.berths,sizeof berths);}
         if(!request_id || train_id<1 || train_id>99999 || (status!=REQUEST_CONFIRMED&&status!=REQUEST_CANCELLED) || berth_count<1 || berth_count>MAX_REQUEST_BERTHS || count==MAX_TRAINS*MAX_BERTHS)goto bad;
         int t=-1;for(int i=0;i<MAX_TRAINS;i++)if(train_ids[i]==train_id){t=i;break;}if(t<0)for(int i=0;i<MAX_TRAINS;i++)if(!train_ids[i]){train_ids[i]=train_id;t=i;break;}if(t<0)goto bad;
-        if(status==REQUEST_CONFIRMED)for(int i=0;i<count;i++)if(ids[i]==request_id)goto bad;
+        if(all_count==MAX_TRAINS*MAX_BERTHS*2)goto bad;
+        if(status==REQUEST_CONFIRMED)for(int i=0;i<all_count;i++)if(all_ids[i]==request_id)goto bad;
+        if(status==REQUEST_CANCELLED){int already_cancelled=0;for(int i=0;i<all_count;i++)if(all_ids[i]==request_id)already_cancelled++;if(already_cancelled!=1)goto bad;}
         if(status==REQUEST_CONFIRMED){for(int i=0;i<berth_count;i++){int b=berths[i];if(b<0||b>=MAX_BERTHS||owners[t][b])goto bad;owners[t][b]=request_id;}ids[count++]=request_id;}
         else {int found_id=-1;for(int i=0;i<count;i++)if(ids[i]==request_id){found_id=i;break;}if(found_id<0)goto bad;for(int i=0;i<berth_count;i++){int b=berths[i];if(b<0||b>=MAX_BERTHS||owners[t][b]!=request_id)goto bad;owners[t][b]=0;}ids[found_id]=ids[count-1];count--;}
+        all_ids[all_count++]=request_id;
         end=ftell(f);
         if(end<0) goto bad;
     }
-    uint64_t *saved = count ? malloc((size_t)count*sizeof(*saved)) : NULL;
-    if(count && !saved) goto bad;
-    if(count) memcpy(saved,ids,(size_t)count*sizeof(*saved));
+    uint64_t *saved = all_count ? malloc((size_t)all_count*sizeof(*saved)) : NULL;
+    if(all_count && !saved) goto bad;
+    if(all_count) memcpy(saved,all_ids,(size_t)all_count*sizeof(*saved));
     free(s->seen_ids);
-    s->seen_ids=saved; s->seen_count=s->seen_cap=(size_t)count;
+    s->seen_ids=saved; s->seen_count=s->seen_cap=(size_t)all_count;
     memcpy(s->train_ids,train_ids,sizeof train_ids);
     for(int t=0;t<MAX_TRAINS;t++)for(int b=0;b<MAX_BERTHS;b++) s->berths[t][b].reserved_by=owners[t][b];
     fclose(f);

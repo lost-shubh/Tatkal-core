@@ -132,6 +132,8 @@ Clock/FIFO/LRU/FCFS/SCAN/LOOK/C-SCAN/Banker/WFG demonstrations, and recovery val
 demonstrates a supervisor reaping a child that updates POSIX shared memory
 under process-shared semaphores. Local text-file ingress is implemented;
 network/epoll ingress is implemented on the configured TCP port.
+Read-only status, availability, and chart queries use POSIX reader locks and
+can run concurrently while booking/cancellation updates take the writer path.
 
 `ipc-ring-demo` is the bounded shared-memory queue demonstration: a child
 process produces five booking requests and its supervisor consumes them using

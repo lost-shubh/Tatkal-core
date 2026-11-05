@@ -22,7 +22,9 @@ make test
 ## TCP/epoll network ingress
 
 The server also runs a non-blocking TCP listener managed by Linux `epoll`.
-Port `5050` is the default; provide a final port argument to change it:
+It binds to loopback (`127.0.0.1`) by default. Set `TATKAL_BIND=0.0.0.0`
+only when remote clients should be allowed. Port `5050` is the default; provide
+a final port argument to change it:
 
 ```sh
 TATKAL_WAL=bookings.migrated.wal ./tatkal-core server 4 5050

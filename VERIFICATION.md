@@ -17,6 +17,8 @@ Executed in WSL2 on 2026-10-27, Linux 6.6.114.1, 8 reported CPUs.
 - Availability test coverage reports free/occupied capacity per train coach.
 - Fault-injection test confirms queue overflow rejection and partial-WAL
   recovery behavior without modifying customer data.
+- TCP ingress defaults to loopback; bind-address configuration is explicit for
+  deployments that intentionally allow remote clients.
 - `python3 benchmark.py`: three runs each of 100, 1000, and 10000 requests,
   four workers, burst producer with bounded queue backpressure. Temporary
   directories isolate all benchmark logs from customer reservations.

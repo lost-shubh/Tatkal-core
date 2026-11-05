@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <arpa/inet.h>
 #include <fcntl.h>
 #include <netinet/in.h>
 #include <sys/epoll.h>
@@ -20,14 +21,16 @@ static TcpClient *client_for(TcpIngress *tcp,int fd){for(int i=0;i<TCP_CLIENTS;i
 static void tcp_reply_close(TcpIngress *tcp,TcpClient *client,const char *message){(void)send(client->fd,message,strlen(message),MSG_NOSIGNAL);epoll_ctl(tcp->epoll_fd,EPOLL_CTL_DEL,client->fd,NULL);close(client->fd);client->fd=-1;client->used=0;}
 static void record_ingress_rejection(Metrics *m){pthread_mutex_lock(&m->lock);m->submitted++;m->rejected++;pthread_mutex_unlock(&m->lock);}
 
-int ingress_tcp_start(int port,TcpIngress **out){
+int ingress_tcp_start(const char *bind_address,int port,TcpIngress **out){
     if(!out||port<1||port>65535){errno=EINVAL;return -1;}
     TcpIngress *tcp=calloc(1,sizeof *tcp);if(!tcp)return -1;
     tcp->epoll_fd=tcp->listen_fd=-1;
     for(int i=0;i<TCP_CLIENTS;i++)tcp->clients[i].fd=-1;
     tcp->listen_fd=socket(AF_INET,SOCK_STREAM,0);if(tcp->listen_fd<0)goto failed;
     int one=1;(void)setsockopt(tcp->listen_fd,SOL_SOCKET,SO_REUSEADDR,&one,sizeof one);
-    struct sockaddr_in address={.sin_family=AF_INET,.sin_port=htons((uint16_t)port),.sin_addr.s_addr=htonl(INADDR_ANY)};
+    struct sockaddr_in address={.sin_family=AF_INET,.sin_port=htons((uint16_t)port)};
+    if(!bind_address||!*bind_address)bind_address="127.0.0.1";
+    if(inet_pton(AF_INET,bind_address,&address.sin_addr)!=1){errno=EINVAL;goto failed;}
     if(bind(tcp->listen_fd,(struct sockaddr *)&address,sizeof address)||listen(tcp->listen_fd,32)||nonblocking(tcp->listen_fd))goto failed;
     tcp->epoll_fd=epoll_create1(EPOLL_CLOEXEC);if(tcp->epoll_fd<0)goto failed;
     struct epoll_event event={.events=EPOLLIN,.data.fd=tcp->listen_fd};if(epoll_ctl(tcp->epoll_fd,EPOLL_CTL_ADD,tcp->listen_fd,&event))goto failed;

@@ -71,9 +71,10 @@ static int server_mode(int workers,int tcp_port) {
         pool_join(p); return 1;
     }
     TcpIngress *tcp=NULL;
-    if(ingress_tcp_start(tcp_port,&tcp)!=0){perror("Failed to start TCP/epoll ingress");ipc_ring_cleanup(ring_name,ring);pool_join(p);return 1;}
+    const char *bind_address=getenv("TATKAL_BIND");if(!bind_address)bind_address="127.0.0.1";
+    if(ingress_tcp_start(bind_address,tcp_port,&tcp)!=0){perror("Failed to start TCP/epoll ingress");ipc_ring_cleanup(ring_name,ring);pool_join(p);return 1;}
 
-    printf("Tatkal-Core Server started. IPC ring=%s; TCP/epoll=0.0.0.0:%d. Press Ctrl+C to stop.\n", ring_name,tcp_port);
+    printf("Tatkal-Core Server started. IPC ring=%s; TCP/epoll=%s:%d. Press Ctrl+C to stop.\n", ring_name,bind_address,tcp_port);
     puts("TCP protocol: one newline-terminated CSV request: request_id,train,berths,priority,preferred_berth");
     puts("Commands: dashboard | availability TRAIN | status REQUEST_ID | export-csv FILE | cancel REQUEST_ID | queue-stats | metrics | memory-stats | arm-trace | deadlock-test | fault-test | ingress FILE | shutdown");
     fflush(stdout);

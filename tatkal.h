@@ -120,7 +120,7 @@ int run_ipc_queue_demo(FILE *out);
 /* Ingress */
 int ingress_load_file(const char *path, TaskQueue *q, Metrics *m);
 typedef struct TcpIngress TcpIngress;
-int ingress_tcp_start(int port, TcpIngress **out);
+int ingress_tcp_start(const char *bind_address, int port, TcpIngress **out);
 int ingress_tcp_poll(TcpIngress *tcp, TaskQueue *q, Metrics *m, BookingSystem *booking, Wal *wal, int timeout_ms);
 void ingress_tcp_stop(TcpIngress *tcp);
 

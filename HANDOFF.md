@@ -5,8 +5,9 @@
 Project: `C:\Users\Admin\Tatkal-Core` (WSL path:
 `/mnt/c/Users/Admin/Tatkal-Core`). Target: Linux/POSIX C11.
 
-The user wants the **entire original Tatkal-Core synopsis implemented**. Do not
-claim completion: the current code is a working partial prototype.
+The user wants the **entire original Tatkal-Core synopsis implemented**. The
+current repository is the verified educational prototype; preserve its scope
+and do not describe it as production railway infrastructure.
 
 ## Verified by the user in WSL
 
@@ -77,27 +78,27 @@ make smoke
 4. `bookings.wal` is append-only. Delete it before a fresh benchmark if an
    isolated run is needed.
 
-## Not implemented — highest-priority continuation work
+## Historical continuation notes
 
-1. Integrate the POSIX shared-memory ring into actual booking ingress and
-   worker processing. It is currently a standalone demo.
-2. Implement local request-file ingress; then add optional TCP + nonblocking
-   `epoll` ingress behind an interface.
-3. Split algorithms into configurable modules:
+1. The POSIX shared-memory ring is integrated into server booking ingress;
+   `ipc-ring-demo` remains a standalone deterministic demonstration.
+2. Local request-file ingress and TCP + nonblocking `epoll` ingress are both
+   implemented behind the ingress module.
+3. Algorithm demonstrations now include:
    - Banker candidate requests with documented max/allocation/available input
    - WFG graph input, detection trace, victim selection, rollback/retry
    - Clock/LRU with user-provided reference strings and frame count
    - C-SCAN/FCFS with user-provided cylinders, head, and direction
-4. Add booking queries protected by reader locks and live CLI status/metrics.
-5. Add persistent benchmark output (CSV/JSON) with latency distribution/P95,
-   queue waits by priority, completion reconciliation, and configuration.
-6. Add robust tests: concurrent same-berth requests, full/empty queue,
-   duplicate IDs, malformed input, worker failure, WAL corruption, and
-   algorithm known-answer cases.
-7. Add graceful signal shutdown and stricter system-call/error handling.
+4. Booking queries, availability, status, cancellation, live metrics, and CSV
+   output are implemented.
+5. Persistent benchmark output, P95 latency, priority queue waits, fault
+   injection, malformed-input tests, WAL recovery, and known-answer tests are
+   implemented.
+6. Graceful signal shutdown, loopback-safe TCP binding, and idle-client
+   timeouts are implemented.
 
 ## Honest scope statement
 
-This is a functional educational prototype, **not** a complete implementation
-of the full submitted synopsis and not a real IRCTC/railway system. The next
-AI should preserve that distinction in code, README, and report language.
+This is a functional educational prototype implementing the stated synopsis
+scope, **not** a real IRCTC/railway system. Preserve that distinction in code,
+README, and report language.

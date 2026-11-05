@@ -49,8 +49,8 @@ ring cleanup, per-priority waiting metrics, CSV ingress, and versioned WAL
 compatibility are implemented. Legacy logs with historical berth conflicts are
 migrated non-destructively into a new active WAL; strict recovery deliberately
 refuses the ambiguous original. The application is a Linux/POSIX educational
-prototype as declared in the synopsis. Network/epoll ingress is optional and
-is now implemented alongside the local client/server workflow.
+prototype as declared in the synopsis. Network/epoll ingress is implemented
+alongside the local client/server workflow.
 
 The direct `workload` command uses the current directory's `bookings.wal`
 unless `TATKAL_WAL` is set. Run it in a new results directory, as

@@ -19,6 +19,14 @@ with tempfile.TemporaryDirectory() as directory:
         response = client.recv(256).decode()
     assert response.startswith("CONFIRMED request=9001 train=12034 berths=10,11"), response
     with socket.create_connection(("127.0.0.1", PORT), timeout=3) as client:
+        client.sendall(b"STATUS,9001\n")
+        status = client.recv(256).decode()
+    assert status.startswith("STATUS CONFIRMED request=9001"), status
+    with socket.create_connection(("127.0.0.1", PORT), timeout=3) as client:
+        client.sendall(b"CANCEL,9001\n")
+        cancelled = client.recv(256).decode()
+    assert cancelled == "CANCELLED\n", cancelled
+    with socket.create_connection(("127.0.0.1", PORT), timeout=3) as client:
         client.sendall(b"bad request\n")
         invalid = client.recv(256).decode()
     assert invalid.startswith("REJECTED reason=invalid format"), invalid

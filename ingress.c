@@ -45,16 +45,20 @@ static int parse_request(char *line,BookingRequest *request){
     *request=(BookingRequest){.id=(uint64_t)id,.train_id=train,.berth_count=berths,.priority=(Priority)priority,.preferred_berth=preferred,.arrived_ms=now_ms(),.wants_reply=2};return 0;
 }
 
-static void read_client(TcpIngress *tcp,TcpClient *client,TaskQueue *q,Metrics *m){
-    for(;;){ssize_t n=recv(client->fd,client->line+client->used,sizeof client->line-1-client->used,0);if(n==0){tcp_reply_close(tcp,client,"REJECTED reason=incomplete request\n");return;}if(n<0){if(errno==EAGAIN||errno==EWOULDBLOCK)return;tcp_reply_close(tcp,client,"REJECTED reason=read failure\n");return;}client->used+=(size_t)n;client->line[client->used]=0;char *end=strchr(client->line,'\n');if(!end){if(client->used==sizeof client->line-1){record_ingress_rejection(m);tcp_reply_close(tcp,client,"REJECTED reason=request too long\n");}continue;}*end=0;BookingRequest request;if(parse_request(client->line,&request)){record_ingress_rejection(m);tcp_reply_close(tcp,client,"REJECTED reason=invalid format; use id,train,berths,priority,preferred_berth\n");return;}request.reply_fd=client->fd;if(queue_try_push(q,request,m)){record_ingress_rejection(m);tcp_reply_close(tcp,client,"REJECTED reason=server queue full\n");return;}epoll_ctl(tcp->epoll_fd,EPOLL_CTL_DEL,client->fd,NULL);client->fd=-1;client->used=0;return;}
+static void read_client(TcpIngress *tcp,TcpClient *client,TaskQueue *q,Metrics *m,BookingSystem *booking,Wal *wal){
+    for(;;){ssize_t n=recv(client->fd,client->line+client->used,sizeof client->line-1-client->used,0);if(n==0){tcp_reply_close(tcp,client,"REJECTED reason=incomplete request\n");return;}if(n<0){if(errno==EAGAIN||errno==EWOULDBLOCK)return;tcp_reply_close(tcp,client,"REJECTED reason=read failure\n");return;}client->used+=(size_t)n;client->line[client->used]=0;char *end=strchr(client->line,'\n');if(!end){if(client->used==sizeof client->line-1){record_ingress_rejection(m);tcp_reply_close(tcp,client,"REJECTED reason=request too long\n");}continue;}*end=0;
+        unsigned long long id;BookingResult result;
+        if(sscanf(client->line,"STATUS,%llu",&id)==1){if(booking_query_status(booking,(uint64_t)id,&result)==0){char response[192];int used=snprintf(response,sizeof response,"STATUS CONFIRMED request=%llu train=%d berths=",id,result.train_id);for(int i=0;i<result.berth_count;i++)used+=snprintf(response+used,sizeof response-(size_t)used,"%s%d",i?",":"",result.berth_ids[i]);snprintf(response+used,sizeof response-(size_t)used,"\n");tcp_reply_close(tcp,client,response);}else tcp_reply_close(tcp,client,"STATUS NOT_FOUND\n");return;}
+        if(sscanf(client->line,"CANCEL,%llu",&id)==1){result=booking_cancel(booking,wal,(uint64_t)id);if(result.status==REQUEST_CANCELLED)tcp_reply_close(tcp,client,"CANCELLED\n");else tcp_reply_close(tcp,client,"CANCEL REJECTED\n");return;}
+        BookingRequest request;if(parse_request(client->line,&request)){record_ingress_rejection(m);tcp_reply_close(tcp,client,"REJECTED reason=invalid format; use id,train,berths,priority,preferred_berth\n");return;}request.reply_fd=client->fd;if(queue_try_push(q,request,m)){record_ingress_rejection(m);tcp_reply_close(tcp,client,"REJECTED reason=server queue full\n");return;}epoll_ctl(tcp->epoll_fd,EPOLL_CTL_DEL,client->fd,NULL);client->fd=-1;client->used=0;return;}
 }
 
-int ingress_tcp_poll(TcpIngress *tcp,TaskQueue *q,Metrics *m,int timeout_ms){
+int ingress_tcp_poll(TcpIngress *tcp,TaskQueue *q,Metrics *m,BookingSystem *booking,Wal *wal,int timeout_ms){
     if(!tcp)return 0;
     struct epoll_event events[16];
     int ready=epoll_wait(tcp->epoll_fd,events,16,timeout_ms);
     if(ready<0)return errno==EINTR?0:-1;
-    for(int i=0;i<ready;i++){if(events[i].data.fd==tcp->listen_fd)accept_clients(tcp);else{TcpClient *client=client_for(tcp,events[i].data.fd);if(!client)continue;if(events[i].events&EPOLLIN)read_client(tcp,client,q,m);else if(events[i].events&(EPOLLERR|EPOLLHUP|EPOLLRDHUP))tcp_reply_close(tcp,client,"REJECTED reason=client disconnected\n");}}
+    for(int i=0;i<ready;i++){if(events[i].data.fd==tcp->listen_fd)accept_clients(tcp);else{TcpClient *client=client_for(tcp,events[i].data.fd);if(!client)continue;if(events[i].events&EPOLLIN)read_client(tcp,client,q,m,booking,wal);else if(events[i].events&(EPOLLERR|EPOLLHUP|EPOLLRDHUP))tcp_reply_close(tcp,client,"REJECTED reason=client disconnected\n");}}
     return 0;
 }
 

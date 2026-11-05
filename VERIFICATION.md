@@ -7,8 +7,8 @@ Executed in WSL2 on 2026-10-27, Linux 6.6.114.1, 8 reported CPUs.
 - `make test`: booking/aging, recovery, algorithms, concurrent contention.
 - `python3 integration_test.py`: customer receives berths 34,35,36;
   live queue/metrics/chart commands; command shutdown; restart restoration.
-- `python3 network_test.py`: a non-blocking TCP/epoll request is confirmed and
-  malformed TCP input is explicitly rejected.
+- `python3 network_test.py`: TCP/epoll reservation, status, cancellation, and
+  malformed-input paths are verified.
 - `python3 dashboard_test.py`: the live terminal dashboard reports actual
   work and a CSV metrics snapshot is generated with its header and data row.
 - Cancellation replay test: a confirmed booking is cancelled durably, then

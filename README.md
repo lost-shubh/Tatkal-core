@@ -33,6 +33,9 @@ The TCP protocol is one newline-terminated CSV request per connection:
 `request_id,train_number,berth_count,priority,preferred_berth`. The server
 returns one line, either `CONFIRMED ...` with berth numbers or `REJECTED ...`.
 Malformed input and a full bounded worker queue receive explicit rejections.
+The same TCP port accepts `STATUS,request_id` and `CANCEL,request_id` control
+requests. The helper client supports `status HOST PORT ID` and
+`cancel HOST PORT ID` modes.
 
 ## Make a customer reservation (two WSL terminals)
 

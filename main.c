@@ -55,9 +55,20 @@ static int server_mode(int workers,int tcp_port) {
 
     int recovered = wal_restore(wal_path, &b);
     if (recovered < 0) {
-        fprintf(stderr,"WAL recovery failed. Preserve %s; for an overlapping legacy log run: ./tatkal-core migrate-legacy %s %s.migrated\n",wal_path,wal_path,wal_path);
-        wal_close(&w); queue_destroy(&q); booking_destroy(&b); pthread_mutex_destroy(&m.lock);
-        return 1;
+        char migrated[256];
+        int fallback = !getenv("TATKAL_WAL") && snprintf(migrated,sizeof migrated,"%s.migrated",wal_path) < (int)sizeof migrated && access(migrated,R_OK)==0;
+        if (!fallback) {
+            fprintf(stderr,"WAL recovery failed. Preserve %s; for an overlapping legacy log run: ./tatkal-core migrate-legacy %s %s.migrated\n",wal_path,wal_path,wal_path);
+            wal_close(&w); queue_destroy(&q); booking_destroy(&b); pthread_mutex_destroy(&m.lock);
+            return 1;
+        }
+        fprintf(stderr,"WAL recovery failed for %s; using existing migrated WAL %s\n",wal_path,migrated);
+        wal_close(&w); booking_destroy(&b);
+        if (booking_init(&b) || wal_open(&w,migrated) || (recovered=wal_restore(migrated,&b))<0) {
+            fprintf(stderr,"Migrated WAL recovery failed: %s\n",migrated);
+            queue_destroy(&q); booking_destroy(&b); pthread_mutex_destroy(&m.lock); return 1;
+        }
+        wal_path=migrated;
     }
     printf("Restored %d confirmed bookings.\n", recovered);
     Pool *p = pool_start(workers, &q, &b, &w, &m);

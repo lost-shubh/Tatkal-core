@@ -12,6 +12,7 @@ tatkal-concurrency-tests
 *.wal
 metrics.csv
 trains.db
+__pycache__/
 
 # Local document QA renderings
 qa_final/

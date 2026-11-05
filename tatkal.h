@@ -82,6 +82,7 @@ void booking_rollback(BookingSystem *s, const BookingResult *r);
 int booking_query_status(BookingSystem *s, uint64_t request_id, BookingResult *out);
 void booking_list_confirmed(BookingSystem *s, FILE *out);
 void booking_print_availability(BookingSystem *s, int train_id, FILE *out);
+int booking_available_count(BookingSystem *s, int train_id);
 
 int queue_init(TaskQueue *q);
 void queue_destroy(TaskQueue *q);

@@ -51,6 +51,12 @@ static int parse_request(char *line,BookingRequest *request){
 static void read_client(TcpIngress *tcp,TcpClient *client,TaskQueue *q,Metrics *m,BookingSystem *booking,Wal *wal){
     for(;;){ssize_t n=recv(client->fd,client->line+client->used,sizeof client->line-1-client->used,0);if(n==0){tcp_reply_close(tcp,client,"REJECTED reason=incomplete request\n");return;}if(n<0){if(errno==EAGAIN||errno==EWOULDBLOCK)return;tcp_reply_close(tcp,client,"REJECTED reason=read failure\n");return;}client->last_activity_ms=now_ms();client->used+=(size_t)n;client->line[client->used]=0;char *end=strchr(client->line,'\n');if(!end){if(client->used==sizeof client->line-1){record_ingress_rejection(m);tcp_reply_close(tcp,client,"REJECTED reason=request too long\n");}continue;}*end=0;
         unsigned long long id;BookingResult result;
+        int availability_train;
+        if(sscanf(client->line,"AVAIL,%d",&availability_train)==1){
+            char response[96]; int available=booking_available_count(booking,availability_train);
+            snprintf(response,sizeof response,"AVAIL train=%d seats=%d coaches=3 berths_per_coach=40\n",availability_train,available);
+            tcp_reply_close(tcp,client,response); return;
+        }
         if(sscanf(client->line,"STATUS,%llu",&id)==1){if(booking_query_status(booking,(uint64_t)id,&result)==0){char response[192];int used=snprintf(response,sizeof response,"STATUS CONFIRMED request=%llu train=%d berths=",id,result.train_id);for(int i=0;i<result.berth_count;i++)used+=snprintf(response+used,sizeof response-(size_t)used,"%s%d",i?",":"",result.berth_ids[i]);snprintf(response+used,sizeof response-(size_t)used,"\n");tcp_reply_close(tcp,client,response);}else tcp_reply_close(tcp,client,"STATUS NOT_FOUND\n");return;}
         if(sscanf(client->line,"CANCEL,%llu",&id)==1){result=booking_cancel(booking,wal,(uint64_t)id);if(result.status==REQUEST_CANCELLED)tcp_reply_close(tcp,client,"CANCELLED\n");else tcp_reply_close(tcp,client,"CANCEL REJECTED\n");return;}
         BookingRequest request;if(parse_request(client->line,&request)){record_ingress_rejection(m);tcp_reply_close(tcp,client,"REJECTED reason=invalid format; use id,train,berths,priority,preferred_berth\n");return;}request.reply_fd=client->fd;if(queue_try_push(q,request,m)){record_ingress_rejection(m);tcp_reply_close(tcp,client,"REJECTED reason=server queue full\n");return;}epoll_ctl(tcp->epoll_fd,EPOLL_CTL_DEL,client->fd,NULL);client->fd=-1;client->used=0;return;}

@@ -186,3 +186,23 @@ record and an ignored incomplete tail.
 The interactive CLI accepts `demo`, `ipc`, `ring`, `workload N WORKERS`,
 `recover FILE`, `inspect FILE`, `wal-fault`, and `shutdown`; server-only
 operations include `availability`, `status`, `cancel`, and `export-csv`.
+
+## Customer reservation portal
+
+After importing `railway.db`, start the server in one WSL terminal:
+
+```sh
+./tatkal-core server 4 5050
+```
+
+Then run the database-backed portal in another:
+
+```sh
+python3 tatkal_portal.py --db railway.db --port 5050
+```
+
+The portal searches the timetable by train number or station, displays route,
+train type, running days, stop count, and live seats remaining, then collects
+passenger name, age, gender, quota, and seat count. Berth numbers are never
+chosen by the customer: the booking engine allocates them atomically and
+returns the assigned berths and a local PNR record in `passengers.csv`.

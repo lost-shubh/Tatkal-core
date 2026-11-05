@@ -23,6 +23,10 @@ with tempfile.TemporaryDirectory() as directory:
         status = client.recv(256).decode()
     assert status.startswith("STATUS CONFIRMED request=9001"), status
     with socket.create_connection(("127.0.0.1", PORT), timeout=3) as client:
+        client.sendall(b"AVAIL,12034\n")
+        availability = client.recv(256).decode()
+    assert availability.startswith("AVAIL train=12034 seats="), availability
+    with socket.create_connection(("127.0.0.1", PORT), timeout=3) as client:
         client.sendall(b"CANCEL,9001\n")
         cancelled = client.recv(256).decode()
     assert cancelled == "CANCELLED\n", cancelled

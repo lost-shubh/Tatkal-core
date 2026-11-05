@@ -36,3 +36,10 @@ void booking_print_availability(BookingSystem *s,int train_id,FILE *out){
     for(int coach=0;coach<MAX_BERTHS/COACH_BERTHS;coach++){int free_coach=0;for(int b=coach*COACH_BERTHS;b<(coach+1)*COACH_BERTHS;b++){pthread_rwlock_rdlock(&s->berths[t][b].lock);if(s->berths[t][b].reserved_by)used_count++;else{free_count++;free_coach++;}pthread_rwlock_unlock(&s->berths[t][b].lock);}fprintf(out,"  Coach %d: free=%d occupied=%d\n",coach+1,free_coach,COACH_BERTHS-free_coach);}
     fprintf(out,"Total: free=%d occupied=%d capacity=%d\n",free_count,used_count,MAX_BERTHS);
 }
+
+int booking_available_count(BookingSystem *s, int train_id){
+    int t=train_slot(s,train_id,1); if(t<0) return 0;
+    int free_count=0;
+    for(int b=0;b<MAX_BERTHS;b++){pthread_rwlock_rdlock(&s->berths[t][b].lock);if(!s->berths[t][b].reserved_by)free_count++;pthread_rwlock_unlock(&s->berths[t][b].lock);}
+    return free_count;
+}

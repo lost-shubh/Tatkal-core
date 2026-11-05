@@ -27,6 +27,17 @@ def server(host, port, line):
         s.sendall((line + "\n").encode())
         return s.recv(512).decode(errors="replace").strip()
 
+def show_stops(db, train_number):
+    rows = db.execute("SELECT sequence,station_code,station_name,run_day,arrival,departure,halt_minutes,distance_km FROM train_stops WHERE train_number=? ORDER BY sequence", (train_number,)).fetchall()
+    if not rows:
+        print("No intermediate-station timetable is loaded for this train yet.")
+        print("Re-import the completed railpull export to populate train_stops.")
+        return
+    print("\nIntermediate stations")
+    print("Seq  Code      Station                         Day  Arrival  Departure  Halt  Distance")
+    for seq, code, name, day, arrival, departure, halt, distance in rows:
+        print(f"{seq:3}  {(code or '-'):8}  {name[:32]:32} {day or '-':>3}  {(arrival or '-'):>7}  {(departure or '-'):>9}  {(halt if halt is not None else '-'):>4}  {(distance if distance is not None else '-'):>8}")
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--db", default="railway.db")
@@ -51,8 +62,13 @@ def main():
         print("\nTrain  Name                              Type   Runs       Route                 Stops")
         for r in rows:
             print(f"{r[0]:5}  {r[1][:32]:32} {r[2][:6]:6} {r[3][:9]:9} {r[4][:10]} -> {r[5][:10]} {r[6] or 0:5}")
+        details = input("View intermediate stations for a train (number, blank to continue): ").strip()
+        if details:
+            if any(str(r[0]) == details for r in rows): show_stops(db, details)
+            else: print("That train is not in the displayed results.")
         if choice == "1": continue
         selected = ask("Train number to book: ", lambda x: any(str(r[0]) == x for r in rows))
+        show_stops(db, selected)
         count = int(ask("Number of seats (1-4): ", lambda x: x.isdigit() and 1 <= int(x) <= 4))
         print("Checking live availability...")
         try:

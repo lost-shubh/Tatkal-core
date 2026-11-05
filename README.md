@@ -206,3 +206,6 @@ train type, running days, stop count, and live seats remaining, then collects
 passenger name, age, gender, quota, and seat count. Berth numbers are never
 chosen by the customer: the booking engine allocates them atomically and
 returns the assigned berths and a local PNR record in `passengers.csv`.
+Selecting a train also displays every intermediate station with sequence,
+station code, arrival/departure, halt minutes, running day, and distance from
+the cleaned `train_stops` table.

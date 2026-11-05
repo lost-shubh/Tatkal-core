@@ -22,6 +22,10 @@ CREATE TABLE IF NOT EXISTS train_stops(
 );
 CREATE INDEX IF NOT EXISTS idx_stops_station ON train_stops(station_code);
 CREATE INDEX IF NOT EXISTS idx_stops_name ON train_stops(station_name);
+CREATE TABLE IF NOT EXISTS train_schedules(
+ train_number INTEGER PRIMARY KEY REFERENCES trains(train_number) ON DELETE CASCADE,
+ payload_json TEXT NOT NULL
+);
 """
 
 def text(value): return " ".join((value or "").strip().split())
@@ -39,7 +43,7 @@ def time_value(value):
 
 def clean(input_dir, output_db):
     root=Path(input_dir); db=sqlite3.connect(output_db); db.executescript(SCHEMA)
-    stats={"trains_read":0,"trains_loaded":0,"stations_loaded":0,"stops_read":0,"stops_loaded":0,"rejected":0}
+    stats={"trains_read":0,"trains_loaded":0,"stations_loaded":0,"stops_read":0,"stops_loaded":0,"schedules_loaded":0,"rejected":0}
     train_file=root/"trains.csv"; station_file=root/"stations.csv"; stops_file=root/"stops.csv"
     with train_file.open(newline="",encoding="utf-8-sig") as f:
         rows=csv.DictReader(f)
@@ -61,6 +65,16 @@ def clean(input_dir, output_db):
                 if not n or not seq or not name or db.execute("SELECT 1 FROM trains WHERE train_number=?",(n,)).fetchone() is None: stats["rejected"]+=1;continue
                 code=text(row.get("station_code") or row.get("code")).upper() or None
                 db.execute("INSERT OR REPLACE INTO train_stops VALUES(?,?,?,?,?,?,?,?,?)",(n,seq,code,name,number(row.get("day"),True),time_value(row.get("arrival")),time_value(row.get("departure")),number(row.get("halt"),True),number(row.get("distance"))));stats["stops_loaded"]+=1
+    schedule_file=root/"schedules.jsonl"
+    if schedule_file.exists():
+        import json
+        with schedule_file.open(encoding="utf-8-sig") as f:
+            for line in f:
+                try:
+                    payload=json.loads(line); n=number(payload.get("train_number") or payload.get("number"),True)
+                    if not n or db.execute("SELECT 1 FROM trains WHERE train_number=?",(n,)).fetchone() is None: stats["rejected"]+=1; continue
+                    db.execute("INSERT OR REPLACE INTO train_schedules VALUES(?,?)",(n,json.dumps(payload,separators=(",",":"),ensure_ascii=False)));stats["schedules_loaded"]+=1
+                except (ValueError,TypeError,json.JSONDecodeError): stats["rejected"]+=1
     db.commit();db.close();return stats
 
 def main(argv):

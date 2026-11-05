@@ -111,9 +111,24 @@ python3 train_database.py search trains.db Rajdhani
 ```
 
 `trains.csv` is a small seed for demonstrations, not a claim to contain every
-current Indian Railways service. Import a current authoritative Indian
-Railways/CRIS export using the documented six-column format before production
-or academic “all trains” experiments.
+current Indian Railways service. For a full current timetable, use the
+`railpull` NTES crawler, then import its exported `data/out/trains.csv`:
+
+```sh
+git clone https://github.com/shwetankg07/railpull.git
+cd railpull
+python3 -m venv .venv && . .venv/bin/activate
+pip install -r requirements.txt
+python ntes/crawl.py
+python transform/export.py
+cd ../Tatkal-Core
+python3 train_database.py import-railpull trains.db ../railpull/data/out/trains.csv
+```
+
+The crawl is resumable and may take hours. Respect NTES rate limits and terms;
+the project does not silently download or redistribute a third-party bulk
+snapshot. The official Railway Board timetable is the authoritative reference
+for the applicable timetable period.
 
 Use `ingress FILE` in the server terminal to load local CSV requests. Each
 non-comment line is `request_id,train_number,berth_count,priority,preferred_berth`.

@@ -55,12 +55,15 @@ def seed(db):
 def import_csv(db, filename):
     with open(filename, newline="", encoding="utf-8-sig") as stream:
         rows = csv.DictReader(stream)
-        required = {"train_number","train_name","source_station","destination_station","train_type","runs_on"}
-        if not required.issubset(rows.fieldnames or set()):
-            raise ValueError("CSV must contain: " + ",".join(sorted(required)))
+        fields = set(rows.fieldnames or set())
+        required = {"train_number","source_station","destination_station","train_type"}
+        if not required.issubset(fields) or not ({"train_name","name"}&fields) or not ({"runs_on","runs_days"}&fields):
+            raise ValueError("CSV must contain train_number, name/train_name, source_station, destination_station, train_type, runs_days/runs_on")
         count = 0
         for row in rows:
-            values = tuple(row[key].strip() for key in ("train_number","train_name","source_station","destination_station","train_type","runs_on"))
+            name_key="train_name" if "train_name" in fields else "name"
+            days_key="runs_on" if "runs_on" in fields else "runs_days"
+            values = tuple(row[key].strip() for key in ("train_number",name_key,"source_station","destination_station","train_type",days_key))
             db.execute("""INSERT INTO trains(train_number,train_name,source_station,destination_station,train_type,runs_on)
                           VALUES(?,?,?,?,?,?) ON CONFLICT(train_number) DO UPDATE SET
                           train_name=excluded.train_name,source_station=excluded.source_station,
@@ -79,7 +82,7 @@ def main(argv):
     try:
         if command == "init": print(f"Train database initialized: {path}")
         elif command == "seed": seed(db); print(f"Seed trains loaded: {len(SEED)}")
-        elif command == "import" and len(argv) == 4: print(f"Imported trains: {import_csv(db, argv[3])}")
+        elif command in ("import","import-railpull") and len(argv) == 4: print(f"Imported trains: {import_csv(db, argv[3])}")
         elif command == "search" and len(argv) == 4:
             for row in db.execute("SELECT train_number,train_name,source_station,destination_station,train_type FROM trains WHERE train_name LIKE ? OR CAST(train_number AS TEXT)=? ORDER BY train_number", (f"%{argv[3]}%",argv[3])): print(" | ".join(map(str,row)))
         elif command == "route" and len(argv) == 5:

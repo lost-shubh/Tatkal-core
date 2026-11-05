@@ -16,6 +16,7 @@ static void monitor_command(char *line, BookingSystem *b, TaskQueue *q, Metrics 
         pthread_mutex_unlock(&q->lock);
     } else if (!strcmp(line,"metrics")) print_metrics_summary(m,stdout);
     else if (!strcmp(line,"dashboard")) print_dashboard(m,q,stdout);
+    else if (!strncmp(line,"availability ",13)) { int train; if(sscanf(line+13,"%d",&train)==1)booking_print_availability(b,train,stdout);else puts("usage: availability TRAIN_NUMBER"); }
     else if (!strncmp(line,"status ",7)) { unsigned long long id; BookingResult x; if(sscanf(line+7,"%llu",&id)==1&&booking_query_status(b,(uint64_t)id,&x)==0){printf("Status: CONFIRMED request=%llu train=%d berths=",id,x.train_id);for(int i=0;i<x.berth_count;i++)printf("%s%d",i?",":"",x.berth_ids[i]);puts("");}else if(sscanf(line+7,"%llu",&id)==1)printf("Status: not active request=%llu\n",id);else puts("usage: status REQUEST_ID"); }
     else if (!strncmp(line,"cancel ",7)) { unsigned long long id; if(sscanf(line+7,"%llu",&id)==1){BookingResult x=booking_cancel(b,w,(uint64_t)id);printf("Cancellation %s: request=%llu reason=%s\n",x.status==REQUEST_CANCELLED?"confirmed":"rejected",id,x.reason);}else puts("usage: cancel REQUEST_ID"); }
     else if (!strncmp(line,"export-csv ",11) && line[11]) metrics_export_csv(m,q,line+11,stdout);
@@ -30,7 +31,7 @@ static void monitor_command(char *line, BookingSystem *b, TaskQueue *q, Metrics 
         algo_disk_compare(stdout,cylinders,8,53);
     } else if (!strcmp(line,"deadlock-test")) run_algorithm_demos(stdout);
     else if (!strncmp(line,"ingress ",8) && line[8]) ingress_load_file(line+8,q,m);
-    else if (*line) puts("Commands: dashboard | status REQUEST_ID | export-csv FILE | cancel REQUEST_ID | queue-stats | metrics | show-bookings | memory-stats | arm-trace | deadlock-test | ingress FILE | shutdown");
+    else if (*line) puts("Commands: dashboard | availability TRAIN | status REQUEST_ID | export-csv FILE | cancel REQUEST_ID | queue-stats | metrics | show-bookings | memory-stats | arm-trace | deadlock-test | ingress FILE | shutdown");
     fflush(stdout);
 }
 
@@ -73,7 +74,7 @@ static int server_mode(int workers,int tcp_port) {
 
     printf("Tatkal-Core Server started. IPC ring=%s; TCP/epoll=0.0.0.0:%d. Press Ctrl+C to stop.\n", ring_name,tcp_port);
     puts("TCP protocol: one newline-terminated CSV request: request_id,train,berths,priority,preferred_berth");
-    puts("Commands: dashboard | status REQUEST_ID | export-csv FILE | cancel REQUEST_ID | queue-stats | metrics | show-bookings | memory-stats | arm-trace | deadlock-test | ingress FILE | shutdown");
+    puts("Commands: dashboard | availability TRAIN | status REQUEST_ID | export-csv FILE | cancel REQUEST_ID | queue-stats | metrics | show-bookings | memory-stats | arm-trace | deadlock-test | ingress FILE | shutdown");
     fflush(stdout);
     char command[256]; size_t command_len=0; int input_open=1, overflow=0;
 

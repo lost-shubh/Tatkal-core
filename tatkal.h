@@ -6,6 +6,7 @@
 #include <stdio.h>
 
 #define MAX_BERTHS 120
+#define COACH_BERTHS 40
 #define MAX_TRAINS 16
 #define MAX_REQUEST_BERTHS 4
 #define QUEUE_CAPACITY 256
@@ -80,6 +81,7 @@ void booking_rollback(BookingSystem *s, const BookingResult *r);
 /* New: Booking Queries */
 int booking_query_status(BookingSystem *s, uint64_t request_id, BookingResult *out);
 void booking_list_confirmed(BookingSystem *s, FILE *out);
+void booking_print_availability(BookingSystem *s, int train_id, FILE *out);
 
 int queue_init(TaskQueue *q);
 void queue_destroy(TaskQueue *q);

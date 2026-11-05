@@ -87,6 +87,9 @@ and replay applies the cancellation after restart.
 Use `status REQUEST_ID` to query an active booking. Request IDs remain
 idempotent after cancellation and cannot be reused after restart.
 
+Use `availability TRAIN` in the server terminal to view free/occupied berths
+by coach. The model maps 120 berths into three coaches of 40 berths each.
+
 Use `ingress FILE` in the server terminal to load local CSV requests. Each
 non-comment line is `request_id,train_number,berth_count,priority,preferred_berth`.
 Malformed lines are rejected. The system supports up to 16 distinct trains per
@@ -118,7 +121,7 @@ WAL, concurrency-safe berth state, three logical priority queues with aging,
 Clock/FIFO/LRU/FCFS/SCAN/LOOK/C-SCAN/Banker/WFG demonstrations, and recovery validation. `ipc-demo`
 demonstrates a supervisor reaping a child that updates POSIX shared memory
 under process-shared semaphores. Local text-file ingress is implemented;
-network/epoll ingress is intentionally excluded from the required local mode.
+network/epoll ingress is implemented on the configured TCP port.
 
 `ipc-ring-demo` is the bounded shared-memory queue demonstration: a child
 process produces five booking requests and its supervisor consumes them using
@@ -129,4 +132,5 @@ then appends only three bytes of another record. Recovery must report one valid
 record and an ignored incomplete tail.
 
 The interactive CLI accepts `demo`, `ipc`, `ring`, `workload N WORKERS`,
-`recover FILE`, `inspect FILE`, `wal-fault`, and `shutdown`.
+`recover FILE`, `inspect FILE`, `wal-fault`, and `shutdown`; server-only
+operations include `availability`, `status`, `cancel`, and `export-csv`.

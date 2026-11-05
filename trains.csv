@@ -1,0 +1,11 @@
+train_number,train_name,source_station,destination_station,train_type,runs_on
+12001,Bhopal Shatabdi,New Delhi,Rani Kamlapati,SHATABDI,ALL
+12002,Bhopal Shatabdi,Rani Kamlapati,New Delhi,SHATABDI,ALL
+12034,New Delhi - Kanpur Shatabdi,New Delhi,Kanpur Central,SHATABDI,ALL
+12301,Kolkata Rajdhani,Howrah,New Delhi,RAJDHANI,ALL
+12302,Kolkata Rajdhani,New Delhi,Howrah,RAJDHANI,ALL
+12951,Mumbai Rajdhani,Mumbai Central,New Delhi,RAJDHANI,ALL
+12952,Mumbai Rajdhani,New Delhi,Mumbai Central,RAJDHANI,ALL
+12626,Kerala Express,New Delhi,Thiruvananthapuram,EXPRESS,ALL
+12627,Karnataka Express,New Delhi,KSR Bengaluru,EXPRESS,ALL
+12953,August Kranti Rajdhani,Mumbai Central,New Delhi,RAJDHANI,ALL

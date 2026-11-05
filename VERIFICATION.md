@@ -22,6 +22,8 @@ Executed in WSL2 on 2026-10-27, Linux 6.6.114.1, 8 reported CPUs.
 - TCP idle-client timeout is enforced for incomplete requests.
 - Reader-writer stress test passes with eight concurrent status readers during
   exclusive booking updates.
+- `python3 train_database_test.py`: SQLite schema, CSV import, name search, and
+  route lookup pass using the project seed catalog.
 - `python3 benchmark.py`: three runs each of 100, 1000, and 10000 requests,
   four workers, burst producer with bounded queue backpressure. Temporary
   directories isolate all benchmark logs from customer reservations.

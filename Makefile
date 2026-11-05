@@ -29,6 +29,7 @@ test: all
 	./tatkal-concurrency-tests
 	python3 network_test.py
 	python3 dashboard_test.py
+	python3 train_database_test.py
 
 smoke: tatkal-core
 	./tatkal-core demo

@@ -11,6 +11,7 @@ tatkal-concurrency-tests
 # Runtime reservation history and generated metrics
 *.wal
 metrics.csv
+trains.db
 
 # Local document QA renderings
 qa_final/

@@ -38,6 +38,8 @@ Malformed input and a full bounded worker queue receive explicit rejections.
 The same TCP port accepts `STATUS,request_id` and `CANCEL,request_id` control
 requests. The helper client supports `status HOST PORT ID` and
 `cancel HOST PORT ID` modes.
+Incomplete TCP requests expire after 10 seconds, preventing idle clients from
+occupying bounded ingress slots indefinitely.
 
 ## Make a customer reservation (two WSL terminals)
 

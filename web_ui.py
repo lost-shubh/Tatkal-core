@@ -45,7 +45,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         u=urlparse(self.path)
         if u.path=='/':
-            data=(ROOT/'ui'/'index.html').read_bytes(); self.send_response(200); self.send_header('Content-Type','text/html; charset=utf-8'); self.send_header('Content-Length',str(len(data))); self.end_headers(); self.wfile.write(data); return
+            data=(ROOT/'ui'/'index.html').read_bytes(); self.send_response(200); self.send_header('Content-Type','text/html; charset=utf-8'); self.send_header('Cache-Control','no-store'); self.send_header('Content-Length',str(len(data))); self.end_headers(); self.wfile.write(data); return
         if u.path=='/app.js': self.asset('app.js','text/javascript'); return
         if u.path=='/styles.css': self.asset('styles.css','text/css'); return
         q=parse_qs(u.query)
@@ -88,7 +88,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json({'error':'not found'},404)
         except Exception as e: self.send_json({'error':str(e)},500)
     def asset(self,name,kind):
-        data=(ROOT/'ui'/name).read_bytes(); self.send_response(200); self.send_header('Content-Type',kind); self.send_header('Content-Length',str(len(data))); self.end_headers(); self.wfile.write(data)
+        data=(ROOT/'ui'/name).read_bytes(); self.send_response(200); self.send_header('Content-Type',kind); self.send_header('Cache-Control','no-store'); self.send_header('Content-Length',str(len(data))); self.end_headers(); self.wfile.write(data)
     def do_POST(self):
         try:
             b=self.body(); path=urlparse(self.path).path

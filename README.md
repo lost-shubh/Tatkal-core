@@ -227,3 +227,13 @@ Audit source and installed counts with:
 ```sh
 make db-info
 ```
+
+## Synopsis verification
+
+To verify every executable Operating Systems synopsis requirement in one run:
+
+```sh
+make synopsis-check
+```
+
+See `SYNOPSIS_COMPLETION.md` for the requirement-to-module and test mapping.

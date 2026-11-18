@@ -15,6 +15,10 @@ refresh-timetable:
 db-info:
 	python3 db_info.py
 
+synopsis-check: test smoke
+	python3 integration_test.py
+	python3 benchmark.py
+
 $(OBJ) client.o: tatkal.h
 ipc.o client.o main.o supervisor.o: ipc.h
 
@@ -50,4 +54,4 @@ smoke: tatkal-core
 clean:
 	rm -f $(OBJ) *.o tatkal-core tatkal-client tatkal-net-client tatkal-tests tatkal-recovery-tests tatkal-algorithm-tests tatkal-concurrency-tests
 
-.PHONY: all clean test smoke portal refresh-timetable db-info
+.PHONY: all clean test smoke portal refresh-timetable db-info synopsis-check

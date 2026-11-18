@@ -12,6 +12,7 @@ tatkal-concurrency-tests
 *.wal
 *.wal.migrated
 railway.db
+passengers.csv
 metrics.csv
 trains.db
 __pycache__/

@@ -7,12 +7,36 @@ from pathlib import Path
 
 ROOT=Path(__file__).resolve().parent
 
+BOOKING_SCHEMA="""
+CREATE TABLE IF NOT EXISTS portal_bookings(
+ pnr TEXT PRIMARY KEY, train_number INTEGER NOT NULL, train_name TEXT NOT NULL,
+ source_station TEXT, destination_station TEXT, journey_date TEXT NOT NULL,
+ travel_class TEXT NOT NULL, quota TEXT NOT NULL, status TEXT NOT NULL,
+ created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS portal_passengers(
+ id INTEGER PRIMARY KEY AUTOINCREMENT, pnr TEXT NOT NULL REFERENCES portal_bookings(pnr) ON DELETE CASCADE,
+ name TEXT NOT NULL, age INTEGER NOT NULL, gender TEXT NOT NULL, berth INTEGER
+);
+CREATE TABLE IF NOT EXISTS portal_requests(
+ pnr TEXT NOT NULL REFERENCES portal_bookings(pnr) ON DELETE CASCADE,
+ request_id INTEGER NOT NULL UNIQUE, PRIMARY KEY(pnr,request_id)
+);
+"""
+
 def tcp(host, port, line):
     with socket.create_connection((host, port), timeout=6) as s:
         s.sendall((line+'\n').encode()); return s.recv(1024).decode(errors='replace').strip()
 
+def booking_db(path):
+    con=sqlite3.connect(path); con.execute('PRAGMA foreign_keys=ON'); con.executescript(BOOKING_SCHEMA); return con
+
+def extract_berths(reply):
+    found=re.search(r'berths=([0-9,]+)',reply)
+    return [int(x) for x in found.group(1).split(',')] if found else []
+
 class Handler(BaseHTTPRequestHandler):
-    db_path='railway.db'; tcp_host='127.0.0.1'; tcp_port=5050
+    db_path='railway.db'; booking_db_path='portal_bookings.db'; tcp_host='127.0.0.1'; tcp_port=5050
     def log_message(self, *args): pass
     def send_json(self, value, code=200):
         data=json.dumps(value).encode(); self.send_response(code); self.send_header('Content-Type','application/json'); self.send_header('Content-Length',str(len(data))); self.end_headers(); self.wfile.write(data)
@@ -50,6 +74,16 @@ class Handler(BaseHTTPRequestHandler):
                 n=int(q.get('train',['0'])[0]); rows=[dict(r) for r in con.execute('SELECT sequence,station_code,station_name,run_day,arrival,departure,halt_minutes,distance_km FROM train_stops WHERE train_number=? ORDER BY sequence',(n,))]; self.send_json(rows); return
             if u.path=='/api/availability':
                 n=int(q.get('train',['0'])[0]); result=tcp(self.tcp_host,self.tcp_port,f'AVAIL,{n}'); self.send_json({'raw':result}); return
+            if u.path=='/api/bookings':
+                bcon=booking_db(self.booking_db_path); pnr=q.get('pnr',[''])[0]
+                sql='SELECT * FROM portal_bookings'+(' WHERE pnr=?' if pnr else '')+' ORDER BY created_at DESC LIMIT 30'
+                bookings=[]
+                for row in bcon.execute(sql,(pnr,) if pnr else ()):
+                    item=dict(zip(['pnr','train_number','train_name','source_station','destination_station','journey_date','travel_class','quota','status','created_at'],row))
+                    item['passengers']=[dict(zip(['name','age','gender','berth'],p)) for p in bcon.execute('SELECT name,age,gender,berth FROM portal_passengers WHERE pnr=? ORDER BY id',(item['pnr'],))]
+                    item['request_ids']=[p[0] for p in bcon.execute('SELECT request_id FROM portal_requests WHERE pnr=?',(item['pnr'],))]
+                    bookings.append(item)
+                bcon.close(); self.send_json(bookings); return
             con.close()
             self.send_json({'error':'not found'},404)
         except Exception as e: self.send_json({'error':str(e)},500)
@@ -59,9 +93,37 @@ class Handler(BaseHTTPRequestHandler):
         try:
             b=self.body(); path=urlparse(self.path).path
             if path=='/api/book':
-                rid=int(time.time_ns()//1000); train=int(b['train']); count=int(b['count']); raw=tcp(self.tcp_host,self.tcp_port,f'{rid},{train},{count},1,-1'); self.send_json({'request_id':rid,'pnr':random.randint(1000000000,9999999999),'raw':raw}); return
+                train=int(b['train']); passengers=b.get('passengers',[])
+                if not 1<=len(passengers)<=6: self.send_json({'error':'A ticket must contain 1 to 6 passengers.'},400); return
+                if not re.fullmatch(r'\d{4}-\d{2}-\d{2}',str(b.get('journey_date',''))): self.send_json({'error':'Journey date must be YYYY-MM-DD.'},400); return
+                for p in passengers:
+                    if not str(p.get('name','')).strip() or not isinstance(p.get('age'),int) or not 1<=p['age']<=120 or p.get('gender') not in ('M','F','O'):
+                        self.send_json({'error':'Every passenger needs a valid name, age, and gender.'},400); return
+                request_ids=[]; berths=[]; replies=[]; base=int(time.time_ns()//1000)
+                for offset in range(0,len(passengers),4):
+                    rid=base+offset; reply=tcp(self.tcp_host,self.tcp_port,f'{rid},{train},{min(4,len(passengers)-offset)},1,-1'); replies.append(reply)
+                    if not reply.startswith('CONFIRMED'):
+                        for previous in request_ids: tcp(self.tcp_host,self.tcp_port,f'CANCEL,{previous}')
+                        self.send_json({'error':'Reservation could not be confirmed for all passengers.','details':replies},409); return
+                    request_ids.append(rid); berths.extend(extract_berths(reply))
+                pnr=str(random.randint(1000000000,9999999999)); con=booking_db(self.booking_db_path)
+                con.execute('INSERT INTO portal_bookings(pnr,train_number,train_name,source_station,destination_station,journey_date,travel_class,quota,status) VALUES(?,?,?,?,?,?,?,?,?)',(pnr,train,str(b.get('train_name','Train')),str(b.get('source_station','')),str(b.get('destination_station','')),b['journey_date'],str(b.get('travel_class','SL')),str(b.get('quota','GENERAL')),'CONFIRMED'))
+                for p,berth in zip(passengers,berths): con.execute('INSERT INTO portal_passengers(pnr,name,age,gender,berth) VALUES(?,?,?,?,?)',(pnr,p['name'].strip(),p['age'],p['gender'],berth))
+                for rid in request_ids: con.execute('INSERT INTO portal_requests VALUES(?,?)',(pnr,rid))
+                con.commit(); con.close(); self.send_json({'pnr':pnr,'request_ids':request_ids,'berths':berths,'raw':replies}); return
             if path=='/api/status': self.send_json({'raw':tcp(self.tcp_host,self.tcp_port,f"STATUS,{int(b['request_id'])}")}); return
             if path=='/api/cancel': self.send_json({'raw':tcp(self.tcp_host,self.tcp_port,f"CANCEL,{int(b['request_id'])}")}); return
+            if path=='/api/bookings/cancel':
+                pnr=str(b.get('pnr','')); con=booking_db(self.booking_db_path); ids=[r[0] for r in con.execute('SELECT request_id FROM portal_requests WHERE pnr=?',(pnr,))]
+                if not ids: con.close(); self.send_json({'error':'PNR not found.'},404); return
+                replies=[tcp(self.tcp_host,self.tcp_port,f'CANCEL,{rid}') for rid in ids]
+                state='CANCELLED' if all(r=='CANCELLED' for r in replies) else 'CANCELLATION_PENDING'
+                con.execute('UPDATE portal_bookings SET status=? WHERE pnr=?',(state,pnr)); con.commit(); con.close(); self.send_json({'pnr':pnr,'status':state,'replies':replies}); return
+            if path=='/api/bookings/delete':
+                pnr=str(b.get('pnr','')); con=booking_db(self.booking_db_path); row=con.execute('SELECT status FROM portal_bookings WHERE pnr=?',(pnr,)).fetchone()
+                if not row: con.close(); self.send_json({'error':'PNR not found.'},404); return
+                if row[0] not in ('CANCELLED','CANCELLATION_PENDING'): con.close(); self.send_json({'error':'Cancel the active reservation before deleting its saved record.'},409); return
+                con.execute('DELETE FROM portal_bookings WHERE pnr=?',(pnr,)); con.commit(); con.close(); self.send_json({'deleted':pnr}); return
             if path=='/api/os':
                 test=str(b.get('test',''))
                 if test=='same-seat':
@@ -87,7 +149,8 @@ class Handler(BaseHTTPRequestHandler):
         except Exception as e: self.send_json({'error':str(e)},500)
 
 def main():
-    p=argparse.ArgumentParser(); p.add_argument('--db',default='railway.db'); p.add_argument('--port',type=int,default=8088); p.add_argument('--server-port',type=int,default=5050); a=p.parse_args()
-    Handler.db_path=a.db; Handler.tcp_port=a.server_port
+    p=argparse.ArgumentParser(); p.add_argument('--db',default='railway.db'); p.add_argument('--booking-db',default='portal_bookings.db'); p.add_argument('--port',type=int,default=8088); p.add_argument('--server-port',type=int,default=5050); a=p.parse_args()
+    Handler.db_path=a.db; Handler.booking_db_path=a.booking_db; Handler.tcp_port=a.server_port
+    booking_db(a.booking_db).close()
     print(f'Tatkal-Core web UI: http://127.0.0.1:{a.port}'); ThreadingHTTPServer(('127.0.0.1',a.port),Handler).serve_forever()
 if __name__=='__main__': main()

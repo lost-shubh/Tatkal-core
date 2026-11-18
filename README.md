@@ -237,3 +237,12 @@ make synopsis-check
 ```
 
 See `SYNOPSIS_COMPLETION.md` for the requirement-to-module and test mapping.
+
+## Persistent multi-passenger tickets
+
+The browser portal supports one to six passengers per PNR. It collects a name,
+age, and gender for every passenger, then saves journey date, class, quota,
+route, assigned berth, and server request IDs in `portal_bookings.db`.
+Saved tickets remain available after restarting the UI. Cancel a ticket before
+using the explicit **Delete cancelled record** action; deleting a local record
+never cancels an active reservation.

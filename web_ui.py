@@ -2,7 +2,7 @@
 """Local browser UI bridge for the Tatkal-Core SQLite database and TCP server."""
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
-import argparse, json, os, random, re, socket, sqlite3, time
+import argparse, json, os, random, re, socket, sqlite3, time, subprocess, threading
 from pathlib import Path
 
 ROOT=Path(__file__).resolve().parent
@@ -53,6 +53,27 @@ class Handler(BaseHTTPRequestHandler):
                 rid=int(time.time_ns()//1000); train=int(b['train']); count=int(b['count']); raw=tcp(self.tcp_host,self.tcp_port,f'{rid},{train},{count},1,-1'); self.send_json({'request_id':rid,'pnr':random.randint(1000000000,9999999999),'raw':raw}); return
             if path=='/api/status': self.send_json({'raw':tcp(self.tcp_host,self.tcp_port,f"STATUS,{int(b['request_id'])}")}); return
             if path=='/api/cancel': self.send_json({'raw':tcp(self.tcp_host,self.tcp_port,f"CANCEL,{int(b['request_id'])}")}); return
+            if path=='/api/os':
+                test=str(b.get('test',''))
+                if test=='same-seat':
+                    base=int(time.time_ns()//1000); responses=[None,None]; gate=threading.Barrier(2)
+                    def contender(index):
+                        gate.wait(); responses[index]=tcp(self.tcp_host,self.tcp_port,f'{base+index},99999,1,1,0')
+                    jobs=[threading.Thread(target=contender,args=(i,)) for i in range(2)]
+                    [j.start() for j in jobs]; [j.join() for j in jobs]
+                    confirmed=[base+i for i,r in enumerate(responses) if r and r.startswith('CONFIRMED')]
+                    cleanup=[tcp(self.tcp_host,self.tcp_port,f'CANCEL,{rid}') for rid in confirmed]
+                    seat_zero=sum('berths=0' in (r or '') for r in responses)
+                    passed=seat_zero==1
+                    self.send_json({'passed':passed,'title':'Simultaneous same-seat contention','output':'\n'.join(responses+cleanup),'note':'Both requests prefer berth 0. The allocator may give the losing request another free berth, but berth 0 must be allocated exactly once. Confirmed test bookings were cancelled after observation.'}); return
+                commands={'deadlock':['demo'],'memory':['demo'],'disk':['demo'],'ipc':['ipc-ring-demo'],'wal':['wal-fault-demo']}
+                if test not in commands: self.send_json({'error':'unknown OS test'},400); return
+                run=subprocess.run([str(ROOT/'tatkal-core'),*commands[test]],cwd=ROOT,text=True,capture_output=True,timeout=20)
+                lines=run.stdout.splitlines()
+                if test=='deadlock': lines=[x for x in lines if 'Banker' in x or 'Wait-for' in x or 'Recovery:' in x]
+                if test=='memory': lines=[x for x in lines if 'Memory' in x or x.startswith(('Clock:','FIFO:','LRU:'))]
+                if test=='disk': lines=[x for x in lines if 'Disk' in x or x.startswith(('FCFS','SCAN','LOOK','C-SCAN','Service order'))]
+                self.send_json({'passed':run.returncode==0,'title':test.title()+' test','output':'\n'.join(lines) or run.stderr}); return
             self.send_json({'error':'not found'},404)
         except Exception as e: self.send_json({'error':str(e)},500)
 

@@ -28,8 +28,17 @@ class Handler(BaseHTTPRequestHandler):
         try:
             con=sqlite3.connect(self.db_path); con.row_factory=sqlite3.Row
             if u.path=='/api/trains':
-                term=q.get('q',[''])[0].upper(); sql='SELECT DISTINCT t.train_number,t.name,t.train_type,t.runs_days,t.source_station,t.destination_station,t.stop_count FROM trains t LEFT JOIN train_stops s ON s.train_number=t.train_number'; args=[]
-                if term: sql+=' WHERE CAST(t.train_number AS TEXT)=? OR UPPER(t.name) LIKE ? OR UPPER(t.source_station) LIKE ? OR UPPER(t.destination_station) LIKE ? OR UPPER(s.station_code) LIKE ? OR UPPER(s.station_name) LIKE ?'; args=[term,f'%{term}%',f'%{term}%',f'%{term}%',f'%{term}%',f'%{term}%']
+                term=q.get('q',[''])[0].upper(); source=q.get('from',[''])[0].upper(); destination=q.get('to',[''])[0].upper()
+                sql='SELECT DISTINCT t.train_number,t.name,t.train_type,t.runs_days,t.source_station,t.destination_station,t.stop_count FROM trains t'; where=[]; args=[]
+                if term:
+                    where.append('(CAST(t.train_number AS TEXT)=? OR UPPER(t.name) LIKE ?)'); args += [term,f'%{term}%']
+                if source:
+                    where.append("(UPPER(t.source_station) LIKE ? OR EXISTS (SELECT 1 FROM train_stops s WHERE s.train_number=t.train_number AND (UPPER(s.station_code)=? OR UPPER(s.station_name) LIKE ?)))"); args += [f'%{source}%',source,f'%{source}%']
+                if destination:
+                    where.append("(UPPER(t.destination_station) LIKE ? OR EXISTS (SELECT 1 FROM train_stops s WHERE s.train_number=t.train_number AND (UPPER(s.station_code)=? OR UPPER(s.station_name) LIKE ?)))"); args += [f'%{destination}%',destination,f'%{destination}%']
+                if source and destination:
+                    where.append("EXISTS (SELECT 1 FROM train_stops a JOIN train_stops b ON a.train_number=b.train_number WHERE a.train_number=t.train_number AND a.sequence<b.sequence AND (UPPER(a.station_code)=? OR UPPER(a.station_name) LIKE ?) AND (UPPER(b.station_code)=? OR UPPER(b.station_name) LIKE ?))"); args += [source,f'%{source}%',destination,f'%{destination}%']
+                if where: sql += ' WHERE '+' AND '.join(where)
                 rows=[dict(r) for r in con.execute(sql+' ORDER BY t.train_number LIMIT 50',args)]
                 self.send_json(rows); return
             if u.path=='/api/stations':

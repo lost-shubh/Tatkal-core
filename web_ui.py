@@ -35,6 +35,7 @@ class Handler(BaseHTTPRequestHandler):
             if u.path=='/api/stations':
                 rows=[dict(r) for r in con.execute('SELECT station_code,station_name FROM stations ORDER BY station_name LIMIT 500')]
                 if not rows: rows=[{'station_code':r[0],'station_name':r[0]} for r in con.execute('SELECT DISTINCT station_code,station_name FROM train_stops WHERE station_name IS NOT NULL ORDER BY station_name LIMIT 500')]
+                if not rows: rows=[{'station_code':r[0],'station_name':r[0]} for r in con.execute('SELECT station_name,station_name FROM (SELECT source_station AS station_name FROM trains UNION SELECT destination_station FROM trains) ORDER BY station_name LIMIT 500')]
                 self.send_json(rows); return
             if u.path=='/api/stops':
                 n=int(q.get('train',['0'])[0]); rows=[dict(r) for r in con.execute('SELECT sequence,station_code,station_name,run_day,arrival,departure,halt_minutes,distance_km FROM train_stops WHERE train_number=? ORDER BY sequence',(n,))]; self.send_json(rows); return

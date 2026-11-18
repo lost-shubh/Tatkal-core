@@ -28,9 +28,13 @@ class Handler(BaseHTTPRequestHandler):
         try:
             con=sqlite3.connect(self.db_path); con.row_factory=sqlite3.Row
             if u.path=='/api/trains':
-                term=q.get('q',[''])[0].upper(); sql='SELECT train_number,name,train_type,runs_days,source_station,destination_station,stop_count FROM trains'; args=[]
-                if term: sql+=' WHERE CAST(train_number AS TEXT)=? OR UPPER(name) LIKE ? OR UPPER(source_station) LIKE ? OR UPPER(destination_station) LIKE ?'; args=[term,f'%{term}%',f'%{term}%',f'%{term}%']
-                rows=[dict(r) for r in con.execute(sql+' ORDER BY train_number LIMIT 50',args)]
+                term=q.get('q',[''])[0].upper(); sql='SELECT DISTINCT t.train_number,t.name,t.train_type,t.runs_days,t.source_station,t.destination_station,t.stop_count FROM trains t LEFT JOIN train_stops s ON s.train_number=t.train_number'; args=[]
+                if term: sql+=' WHERE CAST(t.train_number AS TEXT)=? OR UPPER(t.name) LIKE ? OR UPPER(t.source_station) LIKE ? OR UPPER(t.destination_station) LIKE ? OR UPPER(s.station_code) LIKE ? OR UPPER(s.station_name) LIKE ?'; args=[term,f'%{term}%',f'%{term}%',f'%{term}%',f'%{term}%',f'%{term}%']
+                rows=[dict(r) for r in con.execute(sql+' ORDER BY t.train_number LIMIT 50',args)]
+                self.send_json(rows); return
+            if u.path=='/api/stations':
+                rows=[dict(r) for r in con.execute('SELECT station_code,station_name FROM stations ORDER BY station_name LIMIT 500')]
+                if not rows: rows=[{'station_code':r[0],'station_name':r[0]} for r in con.execute('SELECT DISTINCT station_code,station_name FROM train_stops WHERE station_name IS NOT NULL ORDER BY station_name LIMIT 500')]
                 self.send_json(rows); return
             if u.path=='/api/stops':
                 n=int(q.get('train',['0'])[0]); rows=[dict(r) for r in con.execute('SELECT sequence,station_code,station_name,run_day,arrival,departure,halt_minutes,distance_km FROM train_stops WHERE train_number=? ORDER BY sequence',(n,))]; self.send_json(rows); return

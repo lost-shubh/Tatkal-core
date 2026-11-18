@@ -61,10 +61,10 @@ def clean(input_dir, output_db):
     if stops_file.exists():
         with stops_file.open(newline="",encoding="utf-8-sig") as f:
             for row in csv.DictReader(f):
-                stats["stops_read"]+=1;n=number(row.get("train") or row.get("train_number"),True);seq=number(row.get("sequence"),True);name=text(row.get("station_name") or row.get("name"));
+                stats["stops_read"]+=1;n=number(row.get("train") or row.get("train_number"),True);seq=number(row.get("sequence") or row.get("seq"),True);name=text(row.get("station_name") or row.get("name"));
                 if not n or not seq or not name or db.execute("SELECT 1 FROM trains WHERE train_number=?",(n,)).fetchone() is None: stats["rejected"]+=1;continue
                 code=text(row.get("station_code") or row.get("code")).upper() or None
-                db.execute("INSERT OR REPLACE INTO train_stops VALUES(?,?,?,?,?,?,?,?,?)",(n,seq,code,name,number(row.get("day"),True),time_value(row.get("arrival")),time_value(row.get("departure")),number(row.get("halt"),True),number(row.get("distance"))));stats["stops_loaded"]+=1
+                db.execute("INSERT OR REPLACE INTO train_stops VALUES(?,?,?,?,?,?,?,?,?)",(n,seq,code,name,number(row.get("day"),True),time_value(row.get("arrival")),time_value(row.get("departure")),number(row.get("halt") or row.get("halt_min"),True),number(row.get("distance") or row.get("distance_km"))));stats["stops_loaded"]+=1
     schedule_file=root/"schedules.jsonl"
     if schedule_file.exists():
         import json

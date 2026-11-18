@@ -4,7 +4,7 @@ import railway_dataset
 with tempfile.TemporaryDirectory() as d:
     root=Path(d); (root/'trains.csv').write_text('number,name,type,runs_days,source,destination,distance,stop_count\n12001,  Demo  ,MEX,Daily, A , B ,100,2\n12001,Demo,MEX,Daily,A,B,100,2\nBAD,Bad,MEX,Daily,A,B,0,0\n',encoding='utf-8')
     (root/'stations.csv').write_text('code,name,lat,lon\n aa , Alpha,1,2\n',encoding='utf-8')
-    (root/'stops.csv').write_text('train,sequence,station_code,station_name,day,arrival,departure,halt,distance\n12001,1,aa, Alpha ,1,08:00,08:05,5,0\n12001,2,,Beta,1,10:00,10:10,10,100\n',encoding='utf-8')
+    (root/'stops.csv').write_text('train_number,seq,station_code,station_name,day,arrival,departure,halt_min,distance_km\n12001,1,aa, Alpha ,1,08:00,08:05,5,0\n12001,2,,Beta,1,10:00,10:10,10,100\n',encoding='utf-8')
     (root/'schedules.jsonl').write_text('{"train_number":12001,"run_dates":["2026-01-01"]}\n',encoding='utf-8')
     out=root/'railway.db'; stats=railway_dataset.clean(root,out);db=sqlite3.connect(out)
     assert stats['trains_loaded']==2 and stats['stops_loaded']==2 and stats['rejected']==1

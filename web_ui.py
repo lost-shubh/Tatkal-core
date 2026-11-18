@@ -52,7 +52,7 @@ class Handler(BaseHTTPRequestHandler):
         except Exception as e: self.send_json({'error':str(e)},500)
 
 def main():
-    p=argparse.ArgumentParser(); p.add_argument('--db',default='railway.db'); p.add_argument('--port',type=int,default=8000); p.add_argument('--server-port',type=int,default=5050); a=p.parse_args()
+    p=argparse.ArgumentParser(); p.add_argument('--db',default='railway.db'); p.add_argument('--port',type=int,default=8088); p.add_argument('--server-port',type=int,default=5050); a=p.parse_args()
     Handler.db_path=a.db; Handler.tcp_port=a.server_port
     print(f'Tatkal-Core web UI: http://127.0.0.1:{a.port}'); ThreadingHTTPServer(('127.0.0.1',a.port),Handler).serve_forever()
 if __name__=='__main__': main()
